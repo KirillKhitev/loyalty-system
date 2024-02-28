@@ -11,6 +11,7 @@ import (
 	"loyalty-system/internal/models/orders"
 	"loyalty-system/internal/models/users"
 	"loyalty-system/internal/models/withdrawals"
+	accrual "loyalty-system/internal/services"
 )
 
 type Store struct {
@@ -131,12 +132,12 @@ func (s *Store) Close() error {
 	return s.conn.Close()
 }
 
-func NewStore(conn *sql.DB) *Store {
+func NewStore(ctx context.Context, conn *sql.DB) *Store {
 	store := &Store{
 		conn: conn,
 	}
 
-	store.Bootstrap(context.TODO())
+	store.Bootstrap(ctx)
 
 	return store
 }
@@ -347,4 +348,75 @@ func (s *Store) GetWithdrawalsByUserId(ctx context.Context, userId string) ([]*w
 	}
 
 	return result, nil
+}
+
+func (s *Store) GetNewOrders(ctx context.Context) ([]*orders.Order, error) {
+	result := make([]*orders.Order, 0)
+
+	rows, err := s.conn.QueryContext(
+		ctx,
+		`SELECT
+			id,
+    		user_id,
+    		number,
+    		status,
+    		accrual,
+    		uploaded_date
+		FROM
+			orders
+		WHERE
+			status = $1`,
+		orders.StatusList.New,
+	)
+	if err != nil {
+		return result, fmt.Errorf("unable query: %w", err)
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var order orders.Order
+
+		err = rows.Scan(&order.Id, &order.UserId, &order.Number, &order.Status, &order.Accrual, &order.UploadedDate)
+		if err != nil {
+			return result, fmt.Errorf("unable to scan row: %w", err)
+		}
+
+		result = append(result, &order)
+	}
+
+	if err := rows.Err(); err != nil {
+		return result, fmt.Errorf("cursor error: %w", err)
+	}
+
+	return result, nil
+}
+
+func (s *Store) ChangeStatusOrder(ctx context.Context, number, status string) error {
+	_, err := s.conn.ExecContext(
+		ctx,
+		`UPDATE orders
+		SET
+			status = $1
+		WHERE
+			number = $2`,
+		status, number,
+	)
+
+	return err
+}
+
+func (s *Store) UpdateStatusAndAccrualOrder(ctx context.Context, data accrual.DataOrder) error {
+	_, err := s.conn.ExecContext(
+		ctx,
+		`UPDATE orders
+		SET
+			status = $1,
+			accrual = $2
+		WHERE
+			number = $3`,
+		data.Status, data.Accrual, data.Order,
+	)
+
+	return err
 }
