@@ -21,7 +21,7 @@ func (f *Params) Parse() {
 	flag.StringVar(&f.AddrRun, "a", "localhost:45665", "address and port to run API")
 	flag.StringVar(&f.DBConnectionString, "d", "", "string for connection to DB, format 'host=%s port=%s user=%s password=%s dbname=%s sslmode=%s'")
 	flag.StringVar(&f.AccrualAddr, "r", "localhost:8080/api/orders/", "accrual system address")
-	flag.IntVar(&f.AccrualInterval, "i", 15, "interval update accruals")
+	flag.IntVar(&f.AccrualInterval, "i", 1, "interval update accruals")
 	flag.IntVar(&f.AccrualUpdatersCount, "u", 5, "count of updaters accruals")
 	flag.Parse()
 

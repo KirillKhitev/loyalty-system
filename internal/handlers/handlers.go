@@ -24,7 +24,7 @@ type Handler struct {
 
 type Register Handler
 
-const REGISTER_ERR_PREFIX = "Error by register new User"
+const RegisterErrPrefix = "Error by register new User"
 
 func (ch *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -37,7 +37,7 @@ func (ch *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&requestData); err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: unable decode json - %v", REGISTER_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: unable decode json - %v", RegisterErrPrefix, err),
 			code:   http.StatusBadRequest,
 			body:   "Ошибка в запросе",
 			w:      &w,
@@ -47,7 +47,7 @@ func (ch *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if requestData.Login == "" || requestData.Password == "" {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: empty required data", REGISTER_ERR_PREFIX),
+			logMsg: fmt.Sprintf("%s: empty required data", RegisterErrPrefix),
 			code:   http.StatusBadRequest,
 			body:   "Не передали логин или пароль!",
 			w:      &w,
@@ -59,7 +59,7 @@ func (ch *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if errFindUser != nil && !errors.Is(errFindUser, sql.ErrNoRows) {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: unable find exists User - %s", REGISTER_ERR_PREFIX, errFindUser),
+			logMsg: fmt.Sprintf("%s: unable find exists User - %s", RegisterErrPrefix, errFindUser),
 			code:   http.StatusInternalServerError,
 			w:      &w,
 		})
@@ -68,7 +68,7 @@ func (ch *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if existUser.Login != "" {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: user '%s' already exists!", REGISTER_ERR_PREFIX, existUser.Login),
+			logMsg: fmt.Sprintf("%s: user '%s' already exists!", RegisterErrPrefix, existUser.Login),
 			code:   http.StatusConflict,
 			body:   "Данный пользователь уже зарегистрирован!",
 			w:      &w,
@@ -79,7 +79,7 @@ func (ch *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	user, errCreateUser := ch.Store.CreateUser(r.Context(), requestData)
 	if errCreateUser != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: unable create new User - %s", REGISTER_ERR_PREFIX, errCreateUser),
+			logMsg: fmt.Sprintf("%s: unable create new User - %s", RegisterErrPrefix, errCreateUser),
 			code:   http.StatusInternalServerError,
 			w:      &w,
 		})
@@ -89,7 +89,7 @@ func (ch *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	token, err := auth.BuildJWTString(user)
 	if err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: unable create auth token - %s ", REGISTER_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: unable create auth token - %s ", RegisterErrPrefix, err),
 			code:   http.StatusInternalServerError,
 			w:      &w,
 		})
@@ -107,7 +107,7 @@ func (ch *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-const LOGIN_ERR_PREFIX = "Error by login User"
+const LoginErrPrefix = "Error by login User"
 
 type Login Handler
 
@@ -122,7 +122,7 @@ func (ch *Login) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&requestData); err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: unable decode json - %v", LOGIN_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: unable decode json - %v", LoginErrPrefix, err),
 			code:   http.StatusBadRequest,
 			body:   "Ошибка в запросе",
 			w:      &w,
@@ -132,7 +132,7 @@ func (ch *Login) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if requestData.Login == "" || requestData.Password == "" {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: empty required data", LOGIN_ERR_PREFIX),
+			logMsg: fmt.Sprintf("%s: empty required data", LoginErrPrefix),
 			code:   http.StatusBadRequest,
 			body:   "Не передали логин или пароль!",
 			w:      &w,
@@ -145,7 +145,7 @@ func (ch *Login) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if errFindUser != nil {
 		if !errors.Is(errFindUser, sql.ErrNoRows) {
 			sendResponse(ResponseType{
-				logMsg: fmt.Sprintf("%s: unable find User - %s", LOGIN_ERR_PREFIX, errFindUser),
+				logMsg: fmt.Sprintf("%s: unable find User - %s", LoginErrPrefix, errFindUser),
 				code:   http.StatusInternalServerError,
 				w:      &w,
 			})
@@ -153,7 +153,7 @@ func (ch *Login) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: not find User - %s", LOGIN_ERR_PREFIX, requestData.Login),
+			logMsg: fmt.Sprintf("%s: not find User - %s", LoginErrPrefix, requestData.Login),
 			code:   http.StatusUnauthorized,
 			body:   "Неправильные логин/пароль",
 			w:      &w,
@@ -165,7 +165,7 @@ func (ch *Login) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	hash := requestData.GenerateHashPassword()
 	if hash != user.HashPassword {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: wrong password for User - %s", LOGIN_ERR_PREFIX, requestData.Login),
+			logMsg: fmt.Sprintf("%s: wrong password for User - %s", LoginErrPrefix, requestData.Login),
 			code:   http.StatusUnauthorized,
 			body:   "Неправильные логин/пароль",
 			w:      &w,
@@ -176,7 +176,7 @@ func (ch *Login) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	token, err := auth.BuildJWTString(user)
 	if err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: unable create auth token - %s ", LOGIN_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: unable create auth token - %s ", LoginErrPrefix, err),
 			code:   http.StatusInternalServerError,
 			w:      &w,
 		})
@@ -197,10 +197,10 @@ func (ch *Login) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type Orders Handler
 
 func (ch *Orders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	userId, err := auth.GetUserIdFromAuthHeader(r.Header.Get("Authorization"))
+	userID, err := auth.GetUserIDFromAuthHeader(r.Header.Get("Authorization"))
 	if err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: error by Authorization - %v", GET_ORDERS_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: error by Authorization - %v", GetOrdersErrPrefix, err),
 			code:   http.StatusUnauthorized,
 			body:   "Ошибка авторизации!",
 			w:      &w,
@@ -208,7 +208,15 @@ func (ch *Orders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ch.user, err = ch.Store.GetUserById(r.Context(), userId)
+	ch.user, err = ch.Store.GetUserByID(r.Context(), userID)
+	if err != nil {
+		sendResponse(ResponseType{
+			logMsg: fmt.Sprintf("%s: unable find User - %s", GetOrdersErrPrefix, err),
+			code:   http.StatusInternalServerError,
+			w:      &w,
+		})
+		return
+	}
 
 	if r.Method == http.MethodGet {
 		ch.GetOrders(w, r)
@@ -223,14 +231,14 @@ func (ch *Orders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ch.AddOrder(w, r)
 }
 
-const ADD_ORDER_ERR_PREFIX = "Error by Add Order for User"
+const AddOrderErrPrefix = "Error by Add Order for User"
 
 func (ch *Orders) AddOrder(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: error by read Request Body - %v", ADD_ORDER_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: error by read Request Body - %v", AddOrderErrPrefix, err),
 			code:   http.StatusBadRequest,
 			body:   "Ошибка в запросе",
 			w:      &w,
@@ -242,7 +250,7 @@ func (ch *Orders) AddOrder(w http.ResponseWriter, r *http.Request) {
 	orderNumber, err := strconv.ParseUint(orderNumberStr, 10, 64)
 	if err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: wrong Order number - %s", ADD_ORDER_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: wrong Order number - %s", AddOrderErrPrefix, err),
 			code:   http.StatusUnprocessableEntity,
 			body:   "Неверный формат номера заказа!",
 			w:      &w,
@@ -252,7 +260,7 @@ func (ch *Orders) AddOrder(w http.ResponseWriter, r *http.Request) {
 
 	if !orders.ValidateNumber(orderNumber) {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: not valid Order number - %d", ADD_ORDER_ERR_PREFIX, orderNumber),
+			logMsg: fmt.Sprintf("%s: not valid Order number - %d", AddOrderErrPrefix, orderNumber),
 			code:   http.StatusUnprocessableEntity,
 			body:   "Неверный формат номера заказа!",
 			w:      &w,
@@ -260,11 +268,11 @@ func (ch *Orders) AddOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = ch.Store.AddOrderToUser(r.Context(), ch.user.Id, orderNumberStr, orders.StatusList.New)
+	_, err = ch.Store.AddOrderToUser(r.Context(), ch.user.ID, orderNumberStr, orders.StatusList.New)
 
 	if err != nil && errors.Is(err, errs.ErrOrderExistsByOtherUser) {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: %v", GET_ORDERS_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: %v", GetOrdersErrPrefix, err),
 			code:   http.StatusConflict,
 			body:   "Номер заказа уже был загружен другим пользователем!",
 			w:      &w,
@@ -274,7 +282,7 @@ func (ch *Orders) AddOrder(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil && errors.Is(err, errs.ErrOrderExistsByThisUser) {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: %v", GET_ORDERS_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: %v", GetOrdersErrPrefix, err),
 			code:   http.StatusOK,
 			body:   "Этот заказ был уже загружен вами!",
 			w:      &w,
@@ -290,13 +298,13 @@ func (ch *Orders) AddOrder(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-const GET_ORDERS_ERR_PREFIX = "Error by get Orders for User"
+const GetOrdersErrPrefix = "Error by get Orders for User"
 
 func (ch *Orders) GetOrders(w http.ResponseWriter, r *http.Request) {
-	ordersList, err := ch.Store.GetOrdersByUserId(r.Context(), ch.user.Id)
+	ordersList, err := ch.Store.GetOrdersByUserID(r.Context(), ch.user.ID)
 	if err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: error by get orders User - %v", GET_ORDERS_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: error by get orders User - %v", GetOrdersErrPrefix, err),
 			code:   http.StatusInternalServerError,
 			w:      &w,
 		})
@@ -317,7 +325,7 @@ func (ch *Orders) GetOrders(w http.ResponseWriter, r *http.Request) {
 	response, err := json.MarshalIndent(ordersList, "", "    ")
 	if err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: cannot encode response JSON body - %v", GET_ORDERS_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: cannot encode response JSON body - %v", GetOrdersErrPrefix, err),
 			code:   http.StatusInternalServerError,
 			w:      &w,
 		})
@@ -333,7 +341,7 @@ func (ch *Orders) GetOrders(w http.ResponseWriter, r *http.Request) {
 
 type Balance Handler
 
-const BALANCE_ERR_PREFIX = "Error by get balance User"
+const BalanceErrPrefix = "Error by get balance User"
 
 func (ch *Balance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -341,10 +349,10 @@ func (ch *Balance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userId, err := auth.GetUserIdFromAuthHeader(r.Header.Get("Authorization"))
+	userID, err := auth.GetUserIDFromAuthHeader(r.Header.Get("Authorization"))
 	if err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: error by Authorization - %v", BALANCE_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: error by Authorization - %v", BalanceErrPrefix, err),
 			code:   http.StatusUnauthorized,
 			body:   "Ошибка авторизации!",
 			w:      &w,
@@ -352,10 +360,10 @@ func (ch *Balance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balanceInfo, err := ch.Store.GetBalanceByUserId(r.Context(), userId)
+	balanceInfo, err := ch.Store.GetBalanceByUserID(r.Context(), userID)
 	if err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s - %v", BALANCE_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s - %v", BalanceErrPrefix, err),
 			code:   http.StatusInternalServerError,
 			w:      &w,
 		})
@@ -365,7 +373,7 @@ func (ch *Balance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	response, err := json.MarshalIndent(balanceInfo, "", "    ")
 	if err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: cannot encode response JSON body - %v", BALANCE_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: cannot encode response JSON body - %v", BalanceErrPrefix, err),
 			code:   http.StatusInternalServerError,
 			w:      &w,
 		})
@@ -388,7 +396,7 @@ type RequestForAddWithdraw = struct {
 	Sum   money.Money `json:"sum"`
 }
 
-const WITHDRAW_ERR_PREFIX = "Error by add Withdraw User"
+const WithdrawErrPrefix = "Error by add Withdraw User"
 
 func (ch *Withdraw) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -396,10 +404,10 @@ func (ch *Withdraw) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userId, err := auth.GetUserIdFromAuthHeader(r.Header.Get("Authorization"))
+	userID, err := auth.GetUserIDFromAuthHeader(r.Header.Get("Authorization"))
 	if err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: error by Authorization - %v", WITHDRAW_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: error by Authorization - %v", WithdrawErrPrefix, err),
 			code:   http.StatusUnauthorized,
 			body:   "Ошибка авторизации!",
 			w:      &w,
@@ -412,7 +420,7 @@ func (ch *Withdraw) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&request); err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: cannot decode request JSON body - %v", WITHDRAW_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: cannot decode request JSON body - %v", WithdrawErrPrefix, err),
 			code:   http.StatusInternalServerError,
 			w:      &w,
 		})
@@ -422,7 +430,7 @@ func (ch *Withdraw) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	orderNumber, err := strconv.ParseUint(request.Order, 10, 64)
 	if err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: wrong Order number - %s", WITHDRAW_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: wrong Order number - %s", WithdrawErrPrefix, err),
 			code:   http.StatusUnprocessableEntity,
 			body:   "Неверный формат номера заказа!",
 			w:      &w,
@@ -432,7 +440,7 @@ func (ch *Withdraw) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if !orders.ValidateNumber(orderNumber) {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: not valid Order number - %d", WITHDRAW_ERR_PREFIX, orderNumber),
+			logMsg: fmt.Sprintf("%s: not valid Order number - %d", WithdrawErrPrefix, orderNumber),
 			code:   http.StatusUnprocessableEntity,
 			body:   "Неверный формат номера заказа!",
 			w:      &w,
@@ -440,11 +448,19 @@ func (ch *Withdraw) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance, err := ch.Store.GetBalanceByUserId(r.Context(), userId)
+	balance, err := ch.Store.GetBalanceByUserID(r.Context(), userID)
+	if err != nil {
+		sendResponse(ResponseType{
+			logMsg: fmt.Sprintf("%s: unable get balance by User - %s", WithdrawErrPrefix, err),
+			code:   http.StatusInternalServerError,
+			w:      &w,
+		})
+		return
+	}
 
 	if request.Sum > balance.Current {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: wrong sum Withdraw for Order '%v'", WITHDRAW_ERR_PREFIX, request.Order),
+			logMsg: fmt.Sprintf("%s: wrong sum Withdraw for Order '%v'", WithdrawErrPrefix, request.Order),
 			code:   http.StatusPaymentRequired,
 			body:   "На счету недостаточно средств!",
 			w:      &w,
@@ -452,10 +468,10 @@ func (ch *Withdraw) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = ch.Store.AddWithdrawToUser(r.Context(), userId, request.Order, request.Sum)
+	_, err = ch.Store.AddWithdrawToUser(r.Context(), userID, request.Order, request.Sum)
 	if err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: - %v", WITHDRAW_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: - %v", WithdrawErrPrefix, err),
 			code:   http.StatusInternalServerError,
 			w:      &w,
 		})
@@ -473,7 +489,7 @@ func (ch *Withdraw) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type Withdrawals Handler
 
-const WITHDRAWALS_ERR_PREFIX = "Error by get withdrawals User"
+const WithdrawalsErrPrefix = "Error by get withdrawals User"
 
 func (ch *Withdrawals) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -481,10 +497,10 @@ func (ch *Withdrawals) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userId, err := auth.GetUserIdFromAuthHeader(r.Header.Get("Authorization"))
+	userID, err := auth.GetUserIDFromAuthHeader(r.Header.Get("Authorization"))
 	if err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: error by Authorization - %v", WITHDRAWALS_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: error by Authorization - %v", WithdrawalsErrPrefix, err),
 			code:   http.StatusUnauthorized,
 			body:   "Ошибка авторизации!",
 			w:      &w,
@@ -492,10 +508,10 @@ func (ch *Withdrawals) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	withdrawalsList, err := ch.Store.GetWithdrawalsByUserId(r.Context(), userId)
+	withdrawalsList, err := ch.Store.GetWithdrawalsByUserID(r.Context(), userID)
 	if err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: error by get withdrawals User - %v", WITHDRAWALS_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: error by get withdrawals User - %v", WithdrawalsErrPrefix, err),
 			code:   http.StatusInternalServerError,
 			w:      &w,
 		})
@@ -514,7 +530,7 @@ func (ch *Withdrawals) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	response, err := json.MarshalIndent(withdrawalsList, "", "    ")
 	if err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: cannot encode response JSON body - %v", WITHDRAWALS_ERR_PREFIX, err),
+			logMsg: fmt.Sprintf("%s: cannot encode response JSON body - %v", WithdrawalsErrPrefix, err),
 			code:   http.StatusInternalServerError,
 			w:      &w,
 		})

@@ -6,7 +6,7 @@ import (
 )
 
 type User struct {
-	Id               string
+	ID               string
 	Login            string
 	HashPassword     string
 	RegistrationDate time.Time

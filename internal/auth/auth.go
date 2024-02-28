@@ -19,14 +19,14 @@ type AuthorizingData struct {
 }
 
 func (d *AuthorizingData) GenerateHashPassword() string {
-	hashSum := GetHash(d.Password, SECRET_KEY)
+	hashSum := GetHash(d.Password, SecretKey)
 
 	return hashSum
 }
 
 func (d *AuthorizingData) NewUserFromData() *users.User {
 	user := &users.User{
-		Id:               guid.NewString(),
+		ID:               guid.NewString(),
 		Login:            d.Login,
 		HashPassword:     d.GenerateHashPassword(),
 		RegistrationDate: time.Now(),
@@ -37,18 +37,18 @@ func (d *AuthorizingData) NewUserFromData() *users.User {
 
 type Claims struct {
 	jwt.RegisteredClaims
-	UserId string
+	UserID string
 }
 
 func BuildJWTString(user *users.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TOKEN_EXP)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExp)),
 		},
-		UserId: user.Id,
+		UserID: user.ID,
 	})
 
-	tokenString, err := token.SignedString([]byte(SECRET_KEY))
+	tokenString, err := token.SignedString([]byte(SecretKey))
 	if err != nil {
 		return "", err
 	}
@@ -56,9 +56,8 @@ func BuildJWTString(user *users.User) (string, error) {
 	return tokenString, nil
 }
 
-func GetUserIdFromAuthHeader(header string) (string, error) {
-	tokenString := strings.Trim(header, `Bearer`)
-	tokenString = strings.TrimSpace(tokenString)
+func GetUserIDFromAuthHeader(header string) (string, error) {
+	tokenString := strings.TrimPrefix(header, "Bearer ")
 
 	if tokenString == "" {
 		return "", errors.New("empty authorization header")
@@ -70,7 +69,7 @@ func GetUserIdFromAuthHeader(header string) (string, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 			}
-			return []byte(SECRET_KEY), nil
+			return []byte(SecretKey), nil
 		})
 
 	if err != nil {
@@ -81,7 +80,7 @@ func GetUserIdFromAuthHeader(header string) (string, error) {
 		return "", fmt.Errorf("token is not valid")
 	}
 
-	return claims.UserId, nil
+	return claims.UserID, nil
 }
 
 func GetHash(data, key string) string {
@@ -92,5 +91,5 @@ func GetHash(data, key string) string {
 	return hex.EncodeToString(result)
 }
 
-const TOKEN_EXP = time.Hour * 3
-const SECRET_KEY = "dswereGsdfgert2345Dsd"
+const TokenExp = time.Hour * 3
+const SecretKey = "dswereGsdfgert2345Dsd"

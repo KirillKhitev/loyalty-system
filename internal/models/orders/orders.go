@@ -8,9 +8,9 @@ import (
 )
 
 type Order struct {
-	Id           string      `json:"-"`
+	ID           string      `json:"-"`
 	Number       string      `json:"number"`
-	UserId       string      `json:"-"`
+	UserID       string      `json:"-"`
 	Status       string      `json:"status"`
 	Accrual      money.Money `json:"accrual,omitempty"`
 	UploadedDate time.Time   `json:"uploaded_at"`
@@ -53,11 +53,11 @@ func (o Order) MarshalJSON() ([]byte, error) {
 	return json.Marshal(aliasValue)
 }
 
-func NewOrder(number string, userId string, status string) *Order {
+func NewOrder(number string, userID string, status string) *Order {
 	order := &Order{
-		Id:           guid.NewString(),
+		ID:           guid.NewString(),
 		Number:       number,
-		UserId:       userId,
+		UserID:       userID,
 		Status:       status,
 		Accrual:      0,
 		UploadedDate: time.Now(),

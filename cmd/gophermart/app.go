@@ -192,7 +192,7 @@ func (a *app) updateAccrualOrder(ctx context.Context, orderNumber string, idUpda
 		return fmt.Errorf("error by change status order '%s' - %s", orderNumber, err)
 	}
 
-	var responseErr accrual.ApiError
+	var responseErr accrual.APIError
 
 	response, err := a.client.R().
 		SetError(&responseErr).
@@ -200,13 +200,13 @@ func (a *app) updateAccrualOrder(ctx context.Context, orderNumber string, idUpda
 		Get(url)
 
 	if err != nil {
-		return fmt.Errorf("Updater %d, get data for Order %s, err: %v", idUpdater, orderNumber, responseErr)
+		return fmt.Errorf("updater %d, get data for Order %s, err: %v", idUpdater, orderNumber, responseErr)
 	}
 
 	switch response.StatusCode() {
 	case http.StatusNoContent:
 		log.Printf("Заказ %s не зарегистрирован в системе отчета!", orderNumber)
-		if errChangeStatus := a.store.ChangeStatusOrder(ctx, orderNumber, orders.StatusList.Invalid); err != nil {
+		if errChangeStatus := a.store.ChangeStatusOrder(ctx, orderNumber, orders.StatusList.Invalid); errChangeStatus != nil {
 			return fmt.Errorf("error by change status order '%s' - %s", orderNumber, errChangeStatus)
 		}
 	case http.StatusInternalServerError:

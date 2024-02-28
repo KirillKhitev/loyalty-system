@@ -25,7 +25,7 @@ type DataOrder struct {
 	Accrual money.Money `json:"accrual,omitempty"`
 }
 
-type ApiError struct {
+type APIError struct {
 	Code      int       `json:"code"`
 	Message   string    `json:"message"`
 	Timestamp time.Time `json:"timestamp"`

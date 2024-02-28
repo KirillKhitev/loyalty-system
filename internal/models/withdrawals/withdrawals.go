@@ -8,8 +8,8 @@ import (
 )
 
 type Withdraw struct {
-	Id            string      `json:"-"`
-	OrderId       string      `json:"-"`
+	ID            string      `json:"-"`
+	OrderID       string      `json:"-"`
 	Order         string      `json:"order"`
 	Sum           money.Money `json:"sum"`
 	ProcessedDate time.Time   `json:"processed_at"`
@@ -29,10 +29,10 @@ func (w Withdraw) MarshalJSON() ([]byte, error) {
 	return json.Marshal(aliasValue)
 }
 
-func NewWithdraw(orderId, orderNumber string, sum money.Money) *Withdraw {
+func NewWithdraw(orderID, orderNumber string, sum money.Money) *Withdraw {
 	withdraw := &Withdraw{
-		Id:            guid.NewString(),
-		OrderId:       orderId,
+		ID:            guid.NewString(),
+		OrderID:       orderID,
 		Order:         orderNumber,
 		Sum:           sum,
 		ProcessedDate: time.Now(),
