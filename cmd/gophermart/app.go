@@ -72,7 +72,7 @@ func (a *app) stopUpdaters() {
 }
 
 func (a *app) StartServer() error {
-	log.Println("Running server", config.Config)
+	log.Printf("Running server: %v", config.Config)
 
 	r := chi.NewRouter()
 
@@ -200,7 +200,7 @@ func (a *app) updateAccrualOrder(ctx context.Context, orderNumber string, idUpda
 		Get(url)
 
 	if err != nil {
-		return fmt.Errorf("Updater %d, get data for Order %s, err: %s", idUpdater, orderNumber, responseErr)
+		return fmt.Errorf("Updater %d, get data for Order %s, err: %v", idUpdater, orderNumber, responseErr)
 	}
 
 	switch response.StatusCode() {
