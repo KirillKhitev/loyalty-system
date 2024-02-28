@@ -18,8 +18,8 @@ type Store struct {
 	conn *sql.DB
 }
 
-func (s *Store) AddOrderToUser(ctx context.Context, userID string, number string, status string) (*orders.Order, error) {
-	order := &orders.Order{}
+func (s *Store) AddOrderToUser(ctx context.Context, userID string, number string, status string) (orders.Order, error) {
+	order := orders.Order{}
 
 	var userIDExistsOrder string
 
@@ -65,7 +65,7 @@ func (s *Store) AddOrderToUser(ctx context.Context, userID string, number string
 	return order, nil
 }
 
-func (s *Store) CreateUser(ctx context.Context, data auth.AuthorizingData) (*users.User, error) {
+func (s *Store) CreateUser(ctx context.Context, data auth.AuthorizingData) (users.User, error) {
 	user := data.NewUserFromData()
 
 	_, err := s.conn.ExecContext(
@@ -84,7 +84,7 @@ func (s *Store) CreateUser(ctx context.Context, data auth.AuthorizingData) (*use
 	return user, nil
 }
 
-func (s *Store) GetUserByLogin(ctx context.Context, login string) (*users.User, error) {
+func (s *Store) GetUserByLogin(ctx context.Context, login string) (users.User, error) {
 	var user users.User
 
 	row := s.conn.QueryRowContext(
@@ -100,13 +100,13 @@ func (s *Store) GetUserByLogin(ctx context.Context, login string) (*users.User, 
 
 	err := row.Scan(&user.ID, &user.Login, &user.HashPassword, &user.RegistrationDate)
 	if err != nil {
-		return &user, err
+		return user, err
 	}
 
-	return &user, nil
+	return user, nil
 }
 
-func (s *Store) GetUserByID(ctx context.Context, userId string) (*users.User, error) {
+func (s *Store) GetUserByID(ctx context.Context, userID string) (users.User, error) {
 	var user users.User
 
 	row := s.conn.QueryRowContext(
@@ -117,15 +117,15 @@ func (s *Store) GetUserByID(ctx context.Context, userId string) (*users.User, er
 			users
 		WHERE
 			id = $1`,
-		userId,
+		userID,
 	)
 
 	err := row.Scan(&user.ID, &user.Login, &user.HashPassword, &user.RegistrationDate)
 	if err != nil {
-		return &user, err
+		return user, err
 	}
 
-	return &user, nil
+	return user, nil
 }
 
 func (s *Store) Close() error {
@@ -189,7 +189,7 @@ func (s *Store) Bootstrap(ctx context.Context) error {
 	return tx.Commit()
 }
 
-func (s *Store) GetOrdersByUserID(ctx context.Context, userId string) ([]orders.Order, error) {
+func (s *Store) GetOrdersByUserID(ctx context.Context, userID string) ([]orders.Order, error) {
 	result := make([]orders.Order, 0)
 
 	rows, err := s.conn.QueryContext(
@@ -207,7 +207,7 @@ func (s *Store) GetOrdersByUserID(ctx context.Context, userId string) ([]orders.
 			user_id = $1
 		ORDER BY
 			uploaded_date ASC`,
-		userId,
+		userID,
 	)
 	if err != nil {
 		return result, fmt.Errorf("unable query: %w", err)
@@ -233,8 +233,8 @@ func (s *Store) GetOrdersByUserID(ctx context.Context, userId string) ([]orders.
 	return result, nil
 }
 
-func (s *Store) GetBalanceByUserID(ctx context.Context, userId string) (*users.Balance, error) {
-	balance := &users.Balance{}
+func (s *Store) GetBalanceByUserID(ctx context.Context, userID string) (users.Balance, error) {
+	balance := users.Balance{}
 
 	row := s.conn.QueryRowContext(
 		ctx,
@@ -250,7 +250,7 @@ func (s *Store) GetBalanceByUserID(ctx context.Context, userId string) (*users.B
 		WHERE
 			o.status = 'PROCESSED' AND
 			o.user_id = $1`,
-		userId,
+		userID,
 	)
 
 	err := row.Scan(&balance.Current, &balance.Withdrawn)
@@ -261,8 +261,8 @@ func (s *Store) GetBalanceByUserID(ctx context.Context, userId string) (*users.B
 	return balance, nil
 }
 
-func (s *Store) AddWithdrawToUser(ctx context.Context, userId, number string, sum money.Money) (*withdrawals.Withdraw, error) {
-	order := orders.NewOrder(number, userId, orders.StatusList.Processed)
+func (s *Store) AddWithdrawToUser(ctx context.Context, userID, number string, sum money.Money) (withdrawals.Withdraw, error) {
+	order := orders.NewOrder(number, userID, orders.StatusList.Processed)
 	withdraw := withdrawals.NewWithdraw(order.ID, order.Number, sum)
 
 	tx, err := s.conn.BeginTx(ctx, nil)
@@ -303,8 +303,8 @@ func (s *Store) AddWithdrawToUser(ctx context.Context, userId, number string, su
 	return withdraw, err
 }
 
-func (s *Store) GetWithdrawalsByUserID(ctx context.Context, userId string) ([]*withdrawals.Withdraw, error) {
-	result := make([]*withdrawals.Withdraw, 0)
+func (s *Store) GetWithdrawalsByUserID(ctx context.Context, userID string) ([]withdrawals.Withdraw, error) {
+	result := make([]withdrawals.Withdraw, 0)
 
 	rows, err := s.conn.QueryContext(
 		ctx,
@@ -324,7 +324,7 @@ func (s *Store) GetWithdrawalsByUserID(ctx context.Context, userId string) ([]*w
 			o.user_id = $1
 		ORDER BY
 			w.processed_date ASC`,
-		userId,
+		userID,
 	)
 	if err != nil {
 		return result, fmt.Errorf("unable query: %w", err)
@@ -340,7 +340,7 @@ func (s *Store) GetWithdrawalsByUserID(ctx context.Context, userId string) ([]*w
 			return result, fmt.Errorf("unable to scan row: %w", err)
 		}
 
-		result = append(result, &withdraw)
+		result = append(result, withdraw)
 	}
 
 	if err := rows.Err(); err != nil {
@@ -350,8 +350,8 @@ func (s *Store) GetWithdrawalsByUserID(ctx context.Context, userId string) ([]*w
 	return result, nil
 }
 
-func (s *Store) GetNewOrders(ctx context.Context) ([]*orders.Order, error) {
-	result := make([]*orders.Order, 0)
+func (s *Store) GetNewOrders(ctx context.Context) ([]orders.Order, error) {
+	result := make([]orders.Order, 0)
 
 	rows, err := s.conn.QueryContext(
 		ctx,
@@ -382,7 +382,7 @@ func (s *Store) GetNewOrders(ctx context.Context) ([]*orders.Order, error) {
 			return result, fmt.Errorf("unable to scan row: %w", err)
 		}
 
-		result = append(result, &order)
+		result = append(result, order)
 	}
 
 	if err := rows.Err(); err != nil {

@@ -24,8 +24,8 @@ func (d *AuthorizingData) GenerateHashPassword() string {
 	return hashSum
 }
 
-func (d *AuthorizingData) NewUserFromData() *users.User {
-	user := &users.User{
+func (d *AuthorizingData) NewUserFromData() users.User {
+	user := users.User{
 		ID:               guid.NewString(),
 		Login:            d.Login,
 		HashPassword:     d.GenerateHashPassword(),
@@ -40,7 +40,7 @@ type Claims struct {
 	UserID string
 }
 
-func BuildJWTString(user *users.User) (string, error) {
+func BuildJWTString(user users.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExp)),

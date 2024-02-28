@@ -19,7 +19,7 @@ import (
 
 type Handler struct {
 	Store store.Store
-	user  *users.User
+	user  users.User
 }
 
 type Register Handler

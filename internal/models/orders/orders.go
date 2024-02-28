@@ -53,8 +53,8 @@ func (o Order) MarshalJSON() ([]byte, error) {
 	return json.Marshal(aliasValue)
 }
 
-func NewOrder(number string, userID string, status string) *Order {
-	order := &Order{
+func NewOrder(number string, userID string, status string) Order {
+	order := Order{
 		ID:           guid.NewString(),
 		Number:       number,
 		UserID:       userID,

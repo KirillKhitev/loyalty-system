@@ -29,8 +29,8 @@ func (w Withdraw) MarshalJSON() ([]byte, error) {
 	return json.Marshal(aliasValue)
 }
 
-func NewWithdraw(orderID, orderNumber string, sum money.Money) *Withdraw {
-	withdraw := &Withdraw{
+func NewWithdraw(orderID, orderNumber string, sum money.Money) Withdraw {
+	withdraw := Withdraw{
 		ID:            guid.NewString(),
 		OrderID:       orderID,
 		Order:         orderNumber,
