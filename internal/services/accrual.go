@@ -34,7 +34,7 @@ type APIError struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-const APIUrl = "/api/orders/"
+const APIUrl = "api/orders"
 
 type AccrualService struct {
 	client *resty.Client
@@ -56,7 +56,7 @@ type APIServiceResult struct {
 func (ac *AccrualService) GetDataOrderFromAPI(orderNumber string) APIServiceResult {
 	result := APIServiceResult{}
 
-	url := fmt.Sprintf("http://%s%s%s", config.Config.AccrualAddr, APIUrl, orderNumber)
+	url := fmt.Sprintf("%s/%s/%s", config.Config.AccrualAddr, APIUrl, orderNumber)
 
 	var responseErr APIError
 
