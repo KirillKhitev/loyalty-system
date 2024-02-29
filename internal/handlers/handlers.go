@@ -471,7 +471,7 @@ func (ch *Withdraw) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, err = ch.Store.AddWithdrawToUser(r.Context(), userID, request.Order, request.Sum)
 	if err != nil {
 		sendResponse(ResponseType{
-			logMsg: fmt.Sprintf("%s: - %v", WithdrawErrPrefix, err),
+			logMsg: fmt.Sprintf("%s for order '%s': - %v", WithdrawErrPrefix, request.Order, err),
 			code:   http.StatusInternalServerError,
 			w:      &w,
 		})

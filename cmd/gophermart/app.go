@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-resty/resty/v2"
 	"log"
 	"loyalty-system/internal/config"
 	"loyalty-system/internal/gzip"
@@ -28,7 +27,7 @@ type app struct {
 	pauseUpdatersChan chan int
 	closeUpdatersChan chan struct{}
 	wg                *sync.WaitGroup
-	client            *resty.Client
+	accrualService    *accrual.AccrualService
 }
 
 func newApp(s store.Store) *app {
@@ -38,7 +37,7 @@ func newApp(s store.Store) *app {
 		pauseUpdatersChan: make(chan int, config.Config.AccrualUpdatersCount),
 		closeUpdatersChan: make(chan struct{}),
 		wg:                &sync.WaitGroup{},
-		client:            resty.New(),
+		accrualService:    accrual.NewAccrualService(),
 	}
 
 	return instance
@@ -184,26 +183,22 @@ func (a *app) CatchTerminateSignal() error {
 }
 
 func (a *app) updateAccrualOrder(ctx context.Context, orderNumber string, idUpdater int) error {
-	responseJSON := accrual.DataOrder{}
-
-	url := fmt.Sprintf("http://%s%s", config.Config.AccrualAddr, orderNumber)
-
 	if err := a.store.ChangeStatusOrder(ctx, orderNumber, orders.StatusList.Processing); err != nil {
 		return fmt.Errorf("error by change status order '%s' - %s", orderNumber, err)
 	}
 
-	var responseErr accrual.APIError
+	data := a.accrualService.GetDataOrderFromAPI(orderNumber)
+	log.Printf("Сходили в сервис за баллами по заказу '%s': %v", orderNumber, data)
 
-	response, err := a.client.R().
-		SetError(&responseErr).
-		SetResult(&responseJSON).
-		Get(url)
+	if data.Error != nil {
+		if err := a.store.ChangeStatusOrder(ctx, orderNumber, orders.StatusList.New); err != nil {
+			return fmt.Errorf("error by change status order '%s' - %s", orderNumber, err)
+		}
 
-	if err != nil {
-		return fmt.Errorf("updater %d, get data for Order %s, err: %v", idUpdater, orderNumber, responseErr)
+		return fmt.Errorf("updater %d, get data for Order %s, err: %v", idUpdater, orderNumber, data.Error)
 	}
 
-	switch response.StatusCode() {
+	switch data.Code {
 	case http.StatusNoContent:
 		log.Printf("Заказ %s не зарегистрирован в системе отчета!", orderNumber)
 		if errChangeStatus := a.store.ChangeStatusOrder(ctx, orderNumber, orders.StatusList.Invalid); errChangeStatus != nil {
@@ -212,10 +207,9 @@ func (a *app) updateAccrualOrder(ctx context.Context, orderNumber string, idUpda
 	case http.StatusInternalServerError:
 		return fmt.Errorf("internal server error")
 	case http.StatusOK:
-		log.Printf("Успешно сходили в сервис расчета баллов по заказу '%s'", orderNumber)
-		return a.updateOrderByAccrualDataOrder(ctx, responseJSON)
+		return a.updateOrderByAccrualDataOrder(ctx, data.Response)
 	case http.StatusTooManyRequests:
-		return a.pauseUpdaters(response.Header().Get("Retry-After"))
+		return a.pauseUpdaters(data.RetryAfterHeader)
 	}
 
 	return nil
@@ -237,8 +231,6 @@ func (a *app) pauseUpdaters(retryAfter string) error {
 }
 
 func (a *app) updateOrderByAccrualDataOrder(ctx context.Context, data accrual.DataOrder) error {
-	log.Printf("Ответ от сервиса: %v", data)
-
 	switch data.Status {
 	case accrual.OrderStatusList.Invalid:
 		err := a.store.ChangeStatusOrder(ctx, data.Order, orders.StatusList.Invalid)
