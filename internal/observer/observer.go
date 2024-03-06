@@ -55,10 +55,10 @@ func (o *Observer) startUpdaters(ctx context.Context) {
 }
 
 func (o *Observer) startObserverNewOrders(ctx context.Context) {
-	ticker := time.Tick(time.Second * time.Duration(config.Config.AccrualInterval))
+	ticker := time.NewTicker(time.Second * time.Duration(config.Config.AccrualInterval))
 
 	for {
-		<-ticker
+		<-ticker.C
 
 		ordersList, err := o.store.GetNewOrders(ctx)
 		if err != nil {
