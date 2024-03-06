@@ -7,6 +7,12 @@ import (
 	"time"
 )
 
+type DataOrder struct {
+	Order   string      `json:"order"`
+	Status  string      `json:"status"`
+	Accrual money.Money `json:"accrual,omitempty"`
+}
+
 type Order struct {
 	ID           string      `json:"-"`
 	Number       string      `json:"number"`

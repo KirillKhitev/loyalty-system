@@ -7,7 +7,6 @@ import (
 	"loyalty-system/internal/models/orders"
 	"loyalty-system/internal/models/users"
 	"loyalty-system/internal/models/withdrawals"
-	accrual "loyalty-system/internal/services"
 )
 
 type Store interface {
@@ -20,7 +19,7 @@ type Store interface {
 	GetOrdersByUserID(ctx context.Context, userID string) ([]orders.Order, error)
 	GetNewOrders(ctx context.Context) ([]orders.Order, error)
 	ChangeStatusOrder(ctx context.Context, number string, status string) error
-	UpdateStatusAndAccrualOrder(ctx context.Context, data accrual.DataOrder) error
+	UpdateStatusAndAccrualOrder(ctx context.Context, data orders.DataOrder) error
 	GetBalanceByUserID(ctx context.Context, userID string) (users.Balance, error)
 	Close() error
 }

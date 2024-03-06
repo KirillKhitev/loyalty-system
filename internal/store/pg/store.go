@@ -5,13 +5,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"loyalty-system/internal/auth"
 	"loyalty-system/internal/errs"
 	"loyalty-system/internal/models/money"
 	"loyalty-system/internal/models/orders"
 	"loyalty-system/internal/models/users"
 	"loyalty-system/internal/models/withdrawals"
-	accrual "loyalty-system/internal/services"
 )
 
 type Store struct {
@@ -78,10 +79,13 @@ func (s *Store) CreateUser(ctx context.Context, data auth.AuthorizingData) (user
 	)
 
 	if err != nil {
-		return user, err
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			return user, errs.ErrAlreadyExist
+		}
 	}
 
-	return user, nil
+	return user, err
 }
 
 func (s *Store) GetUserByLogin(ctx context.Context, login string) (users.User, error) {
@@ -99,11 +103,11 @@ func (s *Store) GetUserByLogin(ctx context.Context, login string) (users.User, e
 	)
 
 	err := row.Scan(&user.ID, &user.Login, &user.HashPassword, &user.RegistrationDate)
-	if err != nil {
-		return user, err
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return user, errs.ErrNotFound
 	}
 
-	return user, nil
+	return user, err
 }
 
 func (s *Store) GetUserByID(ctx context.Context, userID string) (users.User, error) {
@@ -406,7 +410,7 @@ func (s *Store) ChangeStatusOrder(ctx context.Context, number, status string) er
 	return err
 }
 
-func (s *Store) UpdateStatusAndAccrualOrder(ctx context.Context, data accrual.DataOrder) error {
+func (s *Store) UpdateStatusAndAccrualOrder(ctx context.Context, data orders.DataOrder) error {
 	_, err := s.conn.ExecContext(
 		ctx,
 		`UPDATE orders
