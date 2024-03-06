@@ -40,14 +40,14 @@ func (ch *Login) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type Orders Handler
 
 func (ch *Orders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	userId, response := api.GetUserFromAuthHeader(w, r, ch.Store)
+	userID, response := api.GetUserFromAuthHeader(w, r, ch.Store)
 	if response.Code != 0 {
 		sendResponse(response, w)
 		return
 	}
 
 	if r.Method == http.MethodGet {
-		response := api.GetOrders(w, r, userId, ch.Store)
+		response := api.GetOrders(w, r, userID, ch.Store)
 
 		sendResponse(response, w)
 		return
@@ -58,7 +58,7 @@ func (ch *Orders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response = api.AddOrder(w, r, userId, ch.Store)
+	response = api.AddOrder(w, r, userID, ch.Store)
 
 	sendResponse(response, w)
 }
