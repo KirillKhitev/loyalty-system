@@ -56,6 +56,7 @@ func (o *Observer) startUpdaters(ctx context.Context) {
 
 func (o *Observer) startObserverNewOrders(ctx context.Context) {
 	ticker := time.NewTicker(time.Second * time.Duration(config.Config.AccrualInterval))
+	defer ticker.Stop()
 
 	for {
 		<-ticker.C
