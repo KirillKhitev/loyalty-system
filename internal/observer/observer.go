@@ -2,10 +2,14 @@ package observer
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"loyalty-system/internal/config"
+	"loyalty-system/internal/models/orders"
 	accrual "loyalty-system/internal/services"
 	"loyalty-system/internal/store"
+	"net/http"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -17,20 +21,18 @@ type Observer struct {
 	closeUpdatersChan chan struct{}
 	wg                *sync.WaitGroup
 	accrualService    *accrual.AccrualService
-	pauseUpdaters     bool
+	pauseUpdatersFlag bool
 }
 
 func NewObserver(s store.Store) *Observer {
-	pauseUpdatersChan := make(chan int, config.Config.AccrualUpdatersCount)
-
 	observer := &Observer{
 		store:             s,
 		ordersAccrualChan: make(chan string, config.Config.AccrualUpdatersCount),
-		pauseUpdatersChan: pauseUpdatersChan,
+		pauseUpdatersChan: make(chan int, config.Config.AccrualUpdatersCount),
 		closeUpdatersChan: make(chan struct{}),
 		wg:                &sync.WaitGroup{},
-		accrualService:    accrual.NewAccrualService(s, pauseUpdatersChan),
-		pauseUpdaters:     false,
+		accrualService:    accrual.NewAccrualService(),
+		pauseUpdatersFlag: false,
 	}
 
 	return observer
@@ -81,16 +83,16 @@ func (o *Observer) updater(ctx context.Context, idUpdater int) {
 			log.Printf("Stoped Updater #%d", idUpdater)
 			return
 		case delay := <-o.pauseUpdatersChan:
-			if o.pauseUpdaters {
+			if o.pauseUpdatersFlag {
 				continue
 			}
 
 			go func(o *Observer) {
 				log.Printf("Paused Updater #%d for %d seconds", idUpdater, delay)
 
-				o.pauseUpdaters = true
+				o.pauseUpdatersFlag = true
 				time.Sleep(time.Duration(delay) * time.Second)
-				o.pauseUpdaters = false
+				o.pauseUpdatersFlag = false
 
 				log.Printf("Restarted Updater #%d", idUpdater)
 			}(o)
@@ -99,12 +101,12 @@ func (o *Observer) updater(ctx context.Context, idUpdater int) {
 			case orderNumber := <-o.ordersAccrualChan:
 				log.Printf("Updater #%d get order %s", idUpdater, orderNumber)
 
-				if o.pauseUpdaters {
+				if o.pauseUpdatersFlag {
 					log.Printf("Updater #%d в ожидании, пока завершится пауза", idUpdater)
 					continue
 				}
 
-				if err := o.accrualService.UpdateAccrualOrder(ctx, orderNumber, idUpdater); err != nil {
+				if err := o.UpdateAccrualOrder(ctx, orderNumber, idUpdater); err != nil {
 					log.Println(err)
 					continue
 				}
@@ -114,6 +116,61 @@ func (o *Observer) updater(ctx context.Context, idUpdater int) {
 	}
 }
 
+func (o *Observer) UpdateAccrualOrder(ctx context.Context, orderNumber string, idUpdater int) error {
+	if err := o.store.ChangeStatusOrder(ctx, orderNumber, orders.StatusList.Processing); err != nil {
+		return fmt.Errorf("error by change status order '%s' - %w", orderNumber, err)
+	}
+
+	data := o.accrualService.GetDataOrderFromAPI(ctx, orderNumber)
+	log.Printf("Updater #%d сходил в сервис за баллами по заказу '%s': %v", idUpdater, orderNumber, data)
+
+	if data.Error != nil {
+		if err := o.store.ChangeStatusOrder(ctx, orderNumber, orders.StatusList.New); err != nil {
+			return fmt.Errorf("error by change status order '%s' - %w", orderNumber, err)
+		}
+
+		return fmt.Errorf("updater %d, get data for Order %s, err: %w", idUpdater, orderNumber, data.Error)
+	}
+
+	switch data.Code {
+	case http.StatusNoContent:
+		log.Printf("Заказ %s не зарегистрирован в системе отчета!", orderNumber)
+		if errChangeStatus := o.store.ChangeStatusOrder(ctx, orderNumber, orders.StatusList.Invalid); errChangeStatus != nil {
+			return fmt.Errorf("error by change status order '%s' - %w", orderNumber, errChangeStatus)
+		}
+	case http.StatusInternalServerError:
+		return fmt.Errorf("internal server error")
+	case http.StatusOK:
+		return o.updateOrderByAccrualDataOrder(ctx, data.Response)
+	case http.StatusTooManyRequests:
+		return o.pauseUpdaters(data.RetryAfterHeader)
+	}
+
+	return nil
+}
+
+func (o *Observer) updateOrderByAccrualDataOrder(ctx context.Context, data orders.DataOrder) error {
+	switch data.Status {
+	case accrual.OrderStatusList.Invalid:
+		err := o.store.ChangeStatusOrder(ctx, data.Order, orders.StatusList.Invalid)
+		if err != nil {
+			return fmt.Errorf("error by change status order '%s' - %w", data.Order, err)
+		}
+	case accrual.OrderStatusList.Registered, accrual.OrderStatusList.Processing:
+		err := o.store.ChangeStatusOrder(ctx, data.Order, orders.StatusList.New)
+		if err != nil {
+			return fmt.Errorf("error by change status order '%s' - %w", data.Order, err)
+		}
+	case accrual.OrderStatusList.Processed:
+		err := o.store.UpdateStatusAndAccrualOrder(ctx, data)
+		if err != nil {
+			return fmt.Errorf("error by update accrual order '%s' - %w", data.Order, err)
+		}
+	}
+
+	return nil
+}
+
 func (o *Observer) stopUpdaters() {
 	log.Println("Waiting closing all updaters")
 
@@ -121,4 +178,19 @@ func (o *Observer) stopUpdaters() {
 	o.wg.Wait()
 
 	log.Println("All updaters are stopped!")
+}
+
+func (o *Observer) pauseUpdaters(retryAfter string) error {
+	log.Printf("Слишком много запросов! Нужно подождать %s секунд", retryAfter)
+
+	value, err := strconv.Atoi(retryAfter)
+	if err != nil {
+		return fmt.Errorf("wrong value to Retry-After - %w", err)
+	}
+
+	for i := 1; i <= config.Config.AccrualUpdatersCount; i++ {
+		o.pauseUpdatersChan <- value
+	}
+
+	return nil
 }
